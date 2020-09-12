@@ -24,6 +24,7 @@ object Protocol {
   case object StartGeneratingStrings extends Protocol
   case object Stop extends Protocol
   case object Start extends Protocol
+  case class ServerAcknowledge(name: String) extends Protocol
 
   import io.circe.generic.auto._
 
@@ -33,6 +34,7 @@ object Protocol {
       cursor.downField("type").as[String].flatMap {
         case "GeneratedUUID"          => cursor.as[GeneratedUUID]
         case "GeneratedString"        => cursor.as[GeneratedString]
+        case "ServerAcknowledge"      => cursor.as[ServerAcknowledge]
         case "StartGeneratingUUIDs"   => Right(StartGeneratingUUIDs)
         case "StartGeneratingStrings" => Right(StartGeneratingStrings)
         case "Stop"                   => Right(Stop)
@@ -50,6 +52,8 @@ object Protocol {
       gu.asJson.deepMerge(Json.obj("type" := "GeneratedUUID"))
     case gs: GeneratedString =>
       gs.asJson.deepMerge(Json.obj("type" := "GeneratedString"))
+    case sa: ServerAcknowledge =>
+      sa.asJson.deepMerge(Json.obj("type" := "ServerAcknowledge"))
   }
 
   implicit val protocolCodec: Codec[Protocol] = Codec[Protocol]

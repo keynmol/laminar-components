@@ -24,7 +24,16 @@ object Client {
           Protocol.protocolEncoder(msg).printWith(Printer.noSpaces)
       }
 
-      val container = div("I am based on websocket!")
+      val $acknowledgedConsumer = Var(Option.empty[String])
+
+      val container = div(
+        "Websocket app example",
+        children <-- $acknowledgedConsumer.signal.map(
+          _.map(consumerId =>
+            div(s"Acknowledged by the server, I am now known as $consumerId")
+          ).toVector
+        )
+      )
 
       import example.shared.Protocol._
 
@@ -33,22 +42,11 @@ object Client {
 
       val messageBus = socket.bind(container)
 
-      def cycler[T](first: T, rest: T*): (Signal[T], Observer[Any]) = {
-        val current = Var(0)
-        val len = rest.length + 1
-        val vec = first +: Vector(rest: _*)
-        val toggle = Observer[Any](_ => {
-          println(current.now())
-          println(len)
-          current.update(cur => (cur + 1) % len); current.now()
-        })
-
-        (current.signal.map(vec), toggle)
-      }
-
       val $fromServer = messageBus.events.collect {
         case Data(GeneratedString(str)) => div(s"Received random string: $str")
         case Data(GeneratedUUID(uuid))  => div(s"Received uuid: $uuid")
+        case Data(ServerAcknowledge(name)) =>
+          $acknowledgedConsumer.set(Some(name)); emptyNode
         case ProtocolError(error) =>
           div(color := "red", strong(s"Received protocol error: $error"))
         case cnn @ (ConnectionOpened | ConnectionClosed) =>
@@ -87,6 +85,19 @@ object Client {
 
       new WebsocketApp(div(container, startStopButton, modeSwitchMode))
     }
+  }
+
+  def cycler[T](first: T, rest: T*): (Signal[T], Observer[Any]) = {
+    val current = Var(0)
+    val len = rest.length + 1
+    val vec = first +: Vector(rest: _*)
+    val toggle = Observer[Any](_ => {
+      println(current.now())
+      println(len)
+      current.update(cur => (cur + 1) % len); current.now()
+    })
+
+    (current.signal.map(vec), toggle)
   }
 
   def main(args: Array[String]): Unit = {

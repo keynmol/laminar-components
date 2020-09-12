@@ -78,7 +78,9 @@ trait WebsocketEventbus[T, +E] {
   def send[T1 <: T](t: T1): Unit
 }
 
-class LaminarWebsocket[T](url: String)(implicit prot: StringCodec[T, Throwable]) {
+class LaminarWebsocket[T](url: String)(
+    implicit prot: StringCodec[T, Throwable]
+) {
 
   def bind(el: Element): WebsocketEventbus[T, Throwable] = {
     val serverToClient = new EventBus[WebSocketMessage[T, Throwable]]

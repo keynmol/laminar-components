@@ -1,12 +1,13 @@
 package example.shared
 
 import java.{util => ju}
+
+import io.circe.Codec
 import io.circe.Decoder
-import io.circe.HCursor
 import io.circe.Encoder
+import io.circe.HCursor
 import io.circe.Json
 import io.circe.syntax._
-import io.circe.Codec
 
 sealed trait Mode
 object Mode {

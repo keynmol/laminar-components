@@ -1,11 +1,11 @@
 package example.frontend
 
 import com.raquo.laminar.api.L._
-import org.scalajs.dom
 import com.velvetbeam.laminar.websocket._
-import io.circe.Printer
-import example.shared.Protocol
 import example.shared.Mode
+import example.shared.Protocol
+import io.circe.Printer
+import org.scalajs.dom
 
 object Client {
 

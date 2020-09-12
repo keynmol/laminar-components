@@ -1,4 +1,3 @@
-
 inThisBuild(
   Seq(
     scalafixDependencies += Dependencies.Build.organizeImports,
@@ -9,7 +8,13 @@ inThisBuild(
 )
 
 lazy val root =
-  (project in file(".")).aggregate(websocket, exampleFrontend, exampleBackend, exampleShared.js, exampleShared.jvm)
+  (project in file(".")).aggregate(
+    websocket,
+    exampleFrontend,
+    exampleBackend,
+    exampleShared.js,
+    exampleShared.jvm
+  )
 
 lazy val websocket = (project in file("modules/websocket"))
   .enablePlugins(ScalaJSPlugin)
@@ -20,7 +25,6 @@ lazy val websocket = (project in file("modules/websocket"))
     jsEnv in Test := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv()
   )
   .settings(commonBuildSettings)
-
 
 lazy val exampleFrontend = (project in file("example/frontend"))
   .dependsOn(exampleShared.js)
@@ -91,8 +95,14 @@ lazy val commonBuildSettings: Seq[Def.Setting[_]] = Seq(
   )
 )
 
-addCommandAlias("runExampleDev", ";fastOptCompileCopy; exampleBackend/reStart --mode dev")
-addCommandAlias("runExampleProd", ";fullOptCompileCopy; exampleBackend/reStart --mode prod")
+addCommandAlias(
+  "runExampleDev",
+  ";fastOptCompileCopy; exampleBackend/reStart --mode dev"
+)
+addCommandAlias(
+  "runExampleProd",
+  ";fullOptCompileCopy; exampleBackend/reStart --mode prod"
+)
 
 val scalafixRules = Seq(
   "OrganizeImports",
@@ -104,11 +114,13 @@ val scalafixRules = Seq(
 
 val CICommands = Seq(
   "clean",
-  "backend/compile",
-  "backend/test",
-  "frontend/compile",
-  "frontend/fastOptJS",
-  "frontend/test",
+  "websocket/compile",
+  "websocket/test",
+  "exampleBackend/compile",
+  "exampleBackend/test",
+  "exampleFrontend/compile",
+  "exampleFrontend/fastOptJS",
+  "exampleFrontend/test",
   "scalafmtCheckAll",
   s"scalafix --check $scalafixRules"
 ).mkString(";")

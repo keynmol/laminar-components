@@ -1,8 +1,16 @@
 package example.backend
 
+import java.{util => ju}
+
 import scala.concurrent.duration._
+import scala.{util => su}
 
 import cats.effect._
+import cats.effect.concurrent.Ref
+import example.shared.Mode
+import example.shared.Protocol
+import example.shared.Protocol.GeneratedUUID
+import example.shared.Protocol._
 import fs2.Pipe
 import fs2.concurrent.SignallingRef
 import org.http4s.HttpRoutes
@@ -11,16 +19,6 @@ import org.http4s.dsl.io._
 import org.http4s.server.websocket.WebSocketBuilder
 import org.http4s.websocket.WebSocketFrame
 import org.http4s.websocket.WebSocketFrame.Text
-import example.shared.Protocol.GeneratedUUID
-
-import example.shared.Protocol._
-import example.shared.Protocol
-import cats.effect.concurrent.Ref
-
-import example.shared.Mode
-
-import java.{util => ju}
-import scala.{util => su}
 
 import su.Random.{alphanumeric => randomStr}
 
@@ -28,7 +26,6 @@ class Routes(blocker: Blocker, frontendJS: String)(
     implicit timer: Timer[IO],
     cs: ContextShift[IO]
 ) {
-
 
   def routes = HttpRoutes.of[IO] {
     case GET -> Root / "ws" / "strings" =>

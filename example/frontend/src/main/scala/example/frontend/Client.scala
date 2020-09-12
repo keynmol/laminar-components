@@ -61,7 +61,7 @@ object Client {
           case true  => "Start"
         },
         onClick --> toggleStopped,
-        streamStopped.changes --> {
+        streamStopped.changes --> Observer.apply[Boolean] {
           case false => messageBus.send(Start)
           case true  => messageBus.send(Stop)
         }
@@ -75,7 +75,7 @@ object Client {
           case Mode.Strings => "Switch to random UUID generation"
         },
         onClick --> toggleMode,
-        cycleModes.changes --> {
+        cycleModes.changes --> Observer[Mode] {
           case Mode.Uuids   => messageBus.send(StartGeneratingUUIDs)
           case Mode.Strings => messageBus.send(StartGeneratingStrings)
         }

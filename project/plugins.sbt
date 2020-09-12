@@ -8,3 +8,5 @@ addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.19")
 addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.5.1")
 
 libraryDependencies += "org.scala-js" %% "scalajs-env-jsdom-nodejs" % "1.1.0"
+
+addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.2.8")

@@ -33,7 +33,9 @@ class Routes(blocker: Blocker, frontendJS: String)(
         keepProducing <- SignallingRef.apply[IO, Boolean](true)
         mode <- Ref.of[IO, Mode](Mode.Uuids)
 
-        toClient: fs2.Stream[IO, Protocol] = fs2.Stream.emit(ServerAcknowledge(s"consumer-${ju.UUID.randomUUID()}")) ++ fs2.Stream
+        toClient: fs2.Stream[IO, Protocol] = fs2.Stream.emit(
+          ServerAcknowledge(s"consumer-${ju.UUID.randomUUID()}")
+        ) ++ fs2.Stream
           .repeatEval[IO, Protocol](
             mode.get.map {
               case Mode.Uuids   => GeneratedUUID(ju.UUID.randomUUID())
@@ -58,7 +60,10 @@ class Routes(blocker: Blocker, frontendJS: String)(
               case _                      => IO.unit
             }
 
-        builder <- WebSocketBuilder[IO].build(toClient.map(p => protocolEncoder(p).noSpaces).map(s => Text(s)), fromClient)
+        builder <- WebSocketBuilder[IO].build(
+          toClient.map(p => protocolEncoder(p).noSpaces).map(s => Text(s)),
+          fromClient
+        )
       } yield builder
 
     case request @ GET -> Root / "frontend" / "app.js" =>

@@ -2,8 +2,8 @@ import sbt._
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
 object Versions {
-  val Scala = "2.13.3"
-  val ScalaGroup = "2.13"
+  val Scala = "2.12.10"
+  val ScalaGroup = "2.12"
 
   val cats = "2.1.1"
   val laminar = "0.10.3"

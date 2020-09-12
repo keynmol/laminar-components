@@ -16,13 +16,31 @@ lazy val root =
     exampleShared.jvm
   )
 
+lazy val jsdocs = project
+  .settings(
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "1.0.0"
+  )
+  .dependsOn(websocket)
+  .enablePlugins(ScalaJSPlugin)
+  .settings(commonBuildSettings)
+
+lazy val docs = project // new documentation project
+  .in(file("myproject-docs")) // important: it must not be docs/
+  .dependsOn(websocket)
+  .enablePlugins(MdocPlugin)
+  .settings(
+    mdocJS := Some(jsdocs)
+  )
+  .settings(commonBuildSettings)
+
 lazy val websocket = (project in file("modules/websocket"))
   .enablePlugins(ScalaJSPlugin)
   .settings(
     libraryDependencies ++= Dependencies.Example.frontend.value,
     libraryDependencies += Dependencies.utest.value,
     testFrameworks += new TestFramework("utest.runner.Framework"),
-    jsEnv in Test := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv()
+    jsEnv in Test := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),
+    moduleName := "laminar-components"
   )
   .settings(commonBuildSettings)
 
@@ -87,12 +105,18 @@ fullOptCompileCopy := {
 
 }
 
+def extraOptions(version: String): Seq[String] = {
+  if (version.startsWith("2.12")) Seq("-Ypartial-unification") else Seq.empty
+}
+
 lazy val commonBuildSettings: Seq[Def.Setting[_]] = Seq(
   scalaVersion := Versions.Scala,
   addCompilerPlugin(Dependencies.Build.betterMonadicFor),
+  version := "0.1.0",
   scalacOptions ++= Seq(
     "-Ywarn-unused"
-  )
+  ) ++ extraOptions(scalaVersion.value),
+  organization := "com.velvetbeam"
 )
 
 addCommandAlias(
@@ -121,6 +145,7 @@ val CICommands = Seq(
   "exampleFrontend/compile",
   "exampleFrontend/fastOptJS",
   "exampleFrontend/test",
+  "docs/mdoc",
   "scalafmtCheckAll",
   s"scalafix --check $scalafixRules"
 ).mkString(";")

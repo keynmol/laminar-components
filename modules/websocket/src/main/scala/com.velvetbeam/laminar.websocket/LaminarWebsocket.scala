@@ -64,7 +64,6 @@ object StringCodec {
 
   implicit val intProtocol: StringCodec[Int, Throwable] =
     StringCodec[Int, Throwable](s => Try(s.toInt).toEither, _.toString())
-
 }
 
 sealed trait WebSocketMessage[+T, +E]
@@ -101,33 +100,39 @@ class LaminarWebsocket[T](url: String)(
         websocket = Option(sock)
 
         sock.addEventListener[Event](
-          "message", {
-            case event: MessageEvent =>
-              serverToClient.writer.onNext(
-                prot.fromString(event.data.asInstanceOf[String]) match {
-                  case Left(error)  => ProtocolError(error)
-                  case Right(value) => Data(value)
-                }
-              )
-          }
+          "message",
+          (event: Event) =>
+            event match {
+              case event: MessageEvent =>
+                serverToClient.writer.onNext(
+                  prot.fromString(event.data.asInstanceOf[String]) match {
+                    case Left(error)  => ProtocolError(error)
+                    case Right(value) => Data(value)
+                  }
+                )
+            }
         )
 
         sock.addEventListener[Event](
-          "close", {
-            case _ =>
-              serverToClient.writer.onNext(
-                ConnectionClosed
-              )
-          }
+          "close",
+          (event: Event) =>
+            event match {
+              case _ =>
+                serverToClient.writer.onNext(
+                  ConnectionClosed
+                )
+            }
         )
 
         sock.addEventListener[Event](
-          "open", {
-            case _ =>
-              serverToClient.writer.onNext(
-                ConnectionOpened
-              )
-          }
+          "open",
+          (event: Event) =>
+            event match {
+              case _ =>
+                serverToClient.writer.onNext(
+                  ConnectionOpened
+                )
+            }
         )
 
       }

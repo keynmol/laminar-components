@@ -46,6 +46,11 @@ object Dependencies {
         Seq("com.monovore" %% "decline" % Versions.decline)
     )
 
-    val shared = Def.setting("io.circe" %%% "circe-generic" % Versions.circe)
+    val shared = Def.setting(
+      Seq(
+        "io.circe" %%% "circe-generic" % Versions.circe,
+        "io.circe" %%% "circe-parser" % Versions.circe
+      )
+    )
   }
 }

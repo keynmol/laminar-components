@@ -8,10 +8,6 @@ import com.raquo.airstream.ownership.Subscription
 import com.raquo.laminar.api.L._
 import com.raquo.laminar.modifiers.Binder
 import com.raquo.laminar.nodes.ReactiveElement
-import io.circe.Codec
-import io.circe.Decoder
-import io.circe.Encoder
-import io.circe.Printer
 import org.scalajs.dom.raw.Event
 import org.scalajs.dom.raw.MessageEvent
 import org.scalajs.dom.raw.WebSocket
@@ -48,36 +44,26 @@ trait BinderWithStartStop[-El <: ReactiveElement.Base] extends Binder[El] {
 
 }
 
-trait Protocol[P, +E] {
+trait StringCodec[P, +E] {
   def fromString(msg: String): Either[E, P]
   def toString(msg: P): String
 }
 
-object Protocol {
+object StringCodec {
 
   def apply[T, E](from: String => Either[E, T], to: T => String) =
-    new Protocol[T, E] {
+    new StringCodec[T, E] {
       override def fromString(msg: String): Either[E, T] = from(msg)
 
       override def toString(msg: T): String = to(msg)
 
     }
 
-  implicit def circeProtocol[P: Codec]: Protocol[P, Throwable] =
-    new Protocol[P, Throwable] {
-      override def fromString(msg: String): Either[Throwable, P] =
-        io.circe.parser.parse(msg).flatMap(Decoder[P].decodeJson)
+  implicit val stringProtocol: StringCodec[String, Nothing] =
+    StringCodec[String, Nothing](s => Right(s), identity)
 
-      override def toString(msg: P): String =
-        Encoder[P].apply(msg).printWith(Printer.noSpaces)
-
-    }
-
-  implicit val stringProtocol: Protocol[String, Nothing] =
-    Protocol[String, Nothing](s => Right(s), identity)
-
-  implicit val intProtocol: Protocol[Int, Throwable] =
-    Protocol[Int, Throwable](s => Try(s.toInt).toEither, _.toString())
+  implicit val intProtocol: StringCodec[Int, Throwable] =
+    StringCodec[Int, Throwable](s => Try(s.toInt).toEither, _.toString())
 
 }
 
@@ -92,7 +78,7 @@ trait WebsocketEventbus[T, +E] {
   def send[T1 <: T](t: T1): Unit
 }
 
-class LaminarWebsocket[T](url: String)(implicit prot: Protocol[T, Throwable]) {
+class LaminarWebsocket[T](url: String)(implicit prot: StringCodec[T, Throwable]) {
 
   def bind(el: Element): WebsocketEventbus[T, Throwable] = {
     val serverToClient = new EventBus[WebSocketMessage[T, Throwable]]

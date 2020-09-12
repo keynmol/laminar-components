@@ -11,32 +11,57 @@ import org.http4s.dsl.io._
 import org.http4s.server.websocket.WebSocketBuilder
 import org.http4s.websocket.WebSocketFrame
 import org.http4s.websocket.WebSocketFrame.Text
+import example.shared.Protocol.GeneratedUUID
+
+import example.shared.Protocol._
+import example.shared.Protocol
+import cats.effect.concurrent.Ref
+
+import example.shared.Mode
+
+import java.{util => ju}
+import scala.{util => su}
+
+import su.Random.{alphanumeric => randomStr}
 
 class Routes(blocker: Blocker, frontendJS: String)(
     implicit timer: Timer[IO],
     cs: ContextShift[IO]
 ) {
+
+
   def routes = HttpRoutes.of[IO] {
     case GET -> Root / "ws" / "strings" =>
       for {
-        mode <- SignallingRef.apply[IO, Boolean](true)
+        keepProducing <- SignallingRef.apply[IO, Boolean](true)
+        mode <- Ref.of[IO, Mode](Mode.Uuids)
 
         toClient: fs2.Stream[IO, WebSocketFrame] = fs2.Stream
-          .repeatEval(IO(s"Hello! ${java.util.UUID.randomUUID().toString}"))
-          .zip(mode.continuous)
+          .repeatEval[IO, Protocol](
+            mode.get.map {
+              case Mode.Uuids   => GeneratedUUID(ju.UUID.randomUUID())
+              case Mode.Strings => GeneratedString(randomStr.take(20).mkString)
+            }
+          )
+          .zip(keepProducing.continuous)
           .filter(_._2)
           .map(_._1)
-          .metered(500.millis)
-          .map(s => Text(s))
+          .metered(1.second)
+          .map(p => protocolEncoder(p).noSpaces)
+          .debug()
+          .map(s => Text(s.toString()))
 
         fromClient: Pipe[IO, WebSocketFrame, Unit] = stream =>
           stream
-            .evalTap(s => IO(println(s)))
             .collect { case txt: Text => txt.str }
+            .evalMap(frame => IO.fromEither(Protocol.fromString(frame)))
+            .debug()
             .evalMap {
-              case "stop"  => mode.set(false)
-              case "start" => mode.set(true)
-              case _       => IO.unit
+              case Stop                   => keepProducing.set(false)
+              case Start                  => keepProducing.set(true)
+              case StartGeneratingStrings => mode.set(Mode.Strings)
+              case StartGeneratingUUIDs   => mode.set(Mode.Uuids)
+              case _                      => IO.unit
             }
 
         builder <- WebSocketBuilder[IO].build(toClient, fromClient)

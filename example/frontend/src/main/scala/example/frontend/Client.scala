@@ -3,51 +3,94 @@ package example.frontend
 import com.raquo.laminar.api.L._
 import org.scalajs.dom
 import com.velvetbeam.laminar.websocket._
+import io.circe.Printer
+import example.shared.Protocol
+import example.shared.Mode
 
 object Client {
 
-  case class App private (node: Element, stream: EventStream[String])
+  case class WebsocketApp private (node: Element)
 
-  object App {
+  object WebsocketApp {
     def apply(url: String) = {
+      implicit val codec = new StringCodec[Protocol, Throwable] {
+        override def fromString(msg: String): Either[Throwable, Protocol] = {
+          io.circe.parser
+            .parse(msg)
+            .flatMap(Protocol.protocolDecoder.decodeJson)
+        }
+
+        override def toString(msg: Protocol): String =
+          Protocol.protocolEncoder(msg).printWith(Printer.noSpaces)
+      }
+
       val container = div("I am based on websocket!")
 
+      import example.shared.Protocol._
+
       val socket =
-        new LaminarWebsocket[String](url)
+        new LaminarWebsocket[example.shared.Protocol](url)
 
       val messageBus = socket.bind(container)
 
-      val $periodicWriter = EventStream.periodic(500).map { number =>
-        messageBus.send(number.toString)
+      def cycler[T](first: T, rest: T*): (Signal[T], Observer[Any]) = {
+        val current = Var(0)
+        val len = rest.length + 1
+        val vec = first +: Vector(rest: _*)
+        val toggle = Observer[Any](_ => {
+          println(current.now())
+          println(len)
+          current.update(cur => (cur + 1) % len); current.now()
+        })
+
+        (current.signal.map(vec), toggle)
       }
 
       val $fromServer = messageBus.events.collect {
-        case Data(message) => message
+        case Data(GeneratedString(str)) => div(s"Received random string: $str")
+        case Data(GeneratedUUID(uuid))  => div(s"Received uuid: $uuid")
+        case ProtocolError(error) =>
+          div(color := "red", strong(s"Received protocol error: $error"))
+        case cnn @ (ConnectionOpened | ConnectionClosed) =>
+          div(s"Connection status: $cnn")
       }
 
-      val $streamStopped = Var(false)
+      val (streamStopped, toggleStopped) = cycler(false, true)
 
-      val b = button(
-        child.text <-- $streamStopped.signal.map {
+      val startStopButton = button(
+        child.text <-- streamStopped.signal.map {
           case false => "Stop"
           case true  => "Start"
         },
-        onClick.mapTo(! $streamStopped.now()) --> $streamStopped.writer,
-        $streamStopped.signal.changes --> {
-          case false => messageBus.send("start")
-          case true  => messageBus.send("stop")
-        },
-        $periodicWriter --> Observer.empty
+        onClick --> toggleStopped,
+        streamStopped.changes --> {
+          case false => messageBus.send(Start)
+          case true  => messageBus.send(Stop)
+        }
       )
 
-      container.amend(child.text <-- $fromServer)
+      val (cycleModes, toggleMode) = cycler(Mode.Uuids, Mode.Strings)
 
-      new App(div(container, b), $fromServer)
+      val modeSwitchMode = button(
+        child.text <-- cycleModes.map {
+          case Mode.Uuids   => "Switch to random strings generation"
+          case Mode.Strings => "Switch to random UUID generation"
+        },
+        onClick --> toggleMode,
+        cycleModes.changes --> {
+          case Mode.Uuids   => messageBus.send(StartGeneratingUUIDs)
+          case Mode.Strings => messageBus.send(StartGeneratingStrings)
+        }
+      )
+
+      container.amend(child <-- $fromServer)
+
+      new WebsocketApp(div(container, startStopButton, modeSwitchMode))
     }
   }
 
   def main(args: Array[String]): Unit = {
-    val app = App("ws://localhost:9000/ws/strings")
+    val app = WebsocketApp("ws://localhost:9000/ws/strings")
 
     documentEvents.onDomContentLoaded.foreach { _ =>
       render(dom.document.getElementById("appContainer"), app.node)
